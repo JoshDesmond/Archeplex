@@ -33,6 +33,8 @@ apt install -y sudo curl wget
 apt install -y nginx
 # System hardening
 apt install -y libpam-tmpdir
+# Additional security packages
+apt install -y apt-listbugs debsums apt-show-versions
 
 # ============================================
 # USER CREATION AND CONFIGURATION
@@ -186,6 +188,12 @@ echo "Finalizing system configuration..."
 chmod 600 /etc/ssh/sshd_config
 chmod 600 /etc/fail2ban/jail.local
 
+# Copy additional sysctl security settings
+if [ -f "${CONFIG_DIR}/sysctl/99-security.conf" ]; then
+    cp "${CONFIG_DIR}/sysctl/99-security.conf" /etc/sysctl.d/
+    sysctl -p /etc/sysctl.d/99-security.conf
+    echo "Additional kernel security settings applied"
+fi
 
 echo "User Setup complete. You can now SSH as: ssh ${NEW_USER}@<server-ip> -p ${SSH_PORT}"
 echo "IMPORTANT: Set password for user '${NEW_USER}' by running: passwd ${NEW_USER}"
