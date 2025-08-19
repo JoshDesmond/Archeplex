@@ -15,7 +15,7 @@ fi
 # Configuration variables
 readonly NEW_USER="desmond"
 readonly SSH_PORT="2020"
-readonly SCRIPT_VERSION="1.1.0"
+readonly SCRIPT_VERSION="1.2.0"
 
 # ============================================
 # SYSTEM UPDATES AND ESSENTIAL PACKAGES
@@ -23,14 +23,16 @@ readonly SCRIPT_VERSION="1.1.0"
 echo "Starting system initialization (v${SCRIPT_VERSION})"
 
 apt update && apt upgrade -y && apt-get dist-upgrade -y && apt-get autoremove -y
-# Install essential packages
-apt install -y ufw fail2ban unattended-upgrades sudo curl wget lynis nginx
-# Install PAM security packages
+# System security and monitoring
+apt install -y ufw fail2ban lynis
+# System maintenance and updates
+apt install -y unattended-upgrades needrestart
+# Core utilities
+apt install -y sudo curl wget
+# Web server
+apt install -y nginx
+# System hardening
 apt install -y libpam-tmpdir
-# Install APT security tools
-apt install -y apt-listbugs needrestart debsums apt-show-versions
-# Install malware scanner
-apt install -y rkhunter
 
 # ============================================
 # USER CREATION AND CONFIGURATION
@@ -179,9 +181,6 @@ fi
 # FINAL CONFIGURATION
 # ============================================
 echo "Finalizing system configuration..."
-
-# Update rkhunter database
-rkhunter --update
 
 # Set restrictive permissions on critical files
 chmod 600 /etc/ssh/sshd_config
