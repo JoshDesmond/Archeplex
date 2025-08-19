@@ -33,6 +33,8 @@ apt install -y sudo curl wget
 apt install -y nginx
 # System hardening
 apt install -y libpam-tmpdir
+# Additional security packages
+apt install -y apt-listbugs debsums apt-show-versions
 
 # ============================================
 # USER CREATION AND CONFIGURATION
