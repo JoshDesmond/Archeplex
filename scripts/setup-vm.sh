@@ -180,6 +180,22 @@ else
 fi
 
 # ============================================
+# WEB DIRECTORY SETUP
+# ============================================
+echo "Setting up web directory permissions..."
+
+# Create /var/www if it doesn't exist
+mkdir -p /var/www
+
+# Set ownership and permissions for web deployment
+chown -R ${NEW_USER}:www-data /var/www
+chmod 775 /var/www
+
+echo "Web directory configured: /var/www owned by ${NEW_USER}:www-data with 775 permissions"
+
+# TODO Question, should I do the same thing for /etc/nginx/?
+
+# ============================================
 # FINAL CONFIGURATION
 # ============================================
 echo "Finalizing system configuration..."
