@@ -7,11 +7,6 @@ SERVER="149.28.63.63"
 USER="desmond"
 SSH_PORT="2020"
 
-# Set up SSH multiplexing
-SSH_SOCKET="/tmp/archeplex-deploy-$$"
-SSH_CMD="ssh -p $SSH_PORT -o ControlMaster=auto -o ControlPath=$SSH_SOCKET -o ControlPersist=10m"
-SCP_CMD="scp -P $SSH_PORT -o ControlMaster=auto -o ControlPath=$SSH_SOCKET"
-
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -23,9 +18,9 @@ if ! ssh-add -l >/dev/null 2>&1; then
     exit 1
 fi
 
-# Test SSH connection and establish master connection
+# Test SSH connection
 echo "Testing SSH connection..."
-if ! $SSH_CMD -o ConnectTimeout=5 -o BatchMode=yes "$USER@$SERVER" exit 2>/dev/null; then
+if ! ssh -p "$SSH_PORT" -o ConnectTimeout=5 -o BatchMode=yes "$USER@$SERVER" exit 2>/dev/null; then
     echo "Cannot connect to $USER@$SERVER:$SSH_PORT"
     echo "SSH authentication failed. Please check your SSH key setup."
     exit 1
@@ -33,7 +28,7 @@ fi
 
 # Create a temporary directory for generated configs
 TEMP_DIR=$(mktemp -d)
-trap "rm -rf $TEMP_DIR; ssh -O exit -o ControlPath=$SSH_SOCKET $USER@$SERVER 2>/dev/null" EXIT
+trap "rm -rf $TEMP_DIR" EXIT
 
 echo "Generating domain-specific nginx configurations..."
 
@@ -55,24 +50,33 @@ for website_file in "$PROJECT_ROOT"/websites/*.json; do
     fi
 done
 
-# Deploy main nginx.conf
-echo "Deploying main nginx.conf..."
-$SCP_CMD "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
-$SSH_CMD -t -q "$USER@$SERVER" "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf"
+# Create a deployment script on the fly
+cat > "$TEMP_DIR/deploy.sh" << 'EOF'
+#!/bin/bash
+set -e
 
-# Deploy generated domain configs
-echo "Deploying generated domain configurations..."
-for config_file in "$TEMP_DIR"/*.conf; do
-    if [ -f "$config_file" ]; then
-        filename=$(basename "$config_file")
-        echo "  Deploying $filename..."
-        $SCP_CMD "$config_file" "$USER@$SERVER:/tmp/$filename"
-        $SSH_CMD -t -q "$USER@$SERVER" "sudo mv /tmp/$filename /etc/nginx/conf.d/$filename"
+# Move nginx.conf
+sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf
+
+# Move all domain configs
+for config in /tmp/*.conf; do
+    if [ -f "$config" ]; then
+        sudo mv "$config" /etc/nginx/conf.d/
     fi
 done
 
-# Reload nginx to apply changes
-echo "Reloading nginx..."
-$SSH_CMD -t -q "$USER@$SERVER" "sudo systemctl reload nginx"
+# Reload nginx
+sudo systemctl reload nginx
+EOF
+
+# Copy all files at once
+echo "Copying files to server..."
+scp -P "$SSH_PORT" "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
+scp -P "$SSH_PORT" "$TEMP_DIR"/*.conf "$USER@$SERVER:/tmp/"
+
+# Execute deployment script (single sudo prompt)
+echo "Deploying configurations..."
+scp -P "$SSH_PORT" "$TEMP_DIR/deploy.sh" "$USER@$SERVER:/tmp/deploy.sh"
+ssh -p "$SSH_PORT" -t "$USER@$SERVER" "bash /tmp/deploy.sh && rm /tmp/deploy.sh"
 
 echo "Deployment complete!"
