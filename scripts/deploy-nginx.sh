@@ -7,6 +7,11 @@ SERVER="149.28.63.63"
 USER="desmond"
 SSH_PORT="2020"
 
+# Set up SSH multiplexing
+SSH_SOCKET="/tmp/archeplex-deploy-$$"
+SSH_CMD="ssh -p $SSH_PORT -o ControlMaster=auto -o ControlPath=$SSH_SOCKET -o ControlPersist=10m"
+SCP_CMD="scp -P $SSH_PORT -o ControlMaster=auto -o ControlPath=$SSH_SOCKET"
+
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -18,9 +23,9 @@ if ! ssh-add -l >/dev/null 2>&1; then
     exit 1
 fi
 
-# Test SSH connection
+# Test SSH connection and establish master connection
 echo "Testing SSH connection..."
-if ! ssh -p "$SSH_PORT" -o ConnectTimeout=5 -o BatchMode=yes "$USER@$SERVER" exit 2>/dev/null; then
+if ! $SSH_CMD -o ConnectTimeout=5 -o BatchMode=yes "$USER@$SERVER" exit 2>/dev/null; then
     echo "Cannot connect to $USER@$SERVER:$SSH_PORT"
     echo "SSH authentication failed. Please check your SSH key setup."
     exit 1
@@ -28,7 +33,7 @@ fi
 
 # Create a temporary directory for generated configs
 TEMP_DIR=$(mktemp -d)
-trap "rm -rf $TEMP_DIR" EXIT
+trap "rm -rf $TEMP_DIR; ssh -O exit -o ControlPath=$SSH_SOCKET $USER@$SERVER 2>/dev/null" EXIT
 
 echo "Generating domain-specific nginx configurations..."
 
@@ -52,8 +57,8 @@ done
 
 # Deploy main nginx.conf
 echo "Deploying main nginx.conf..."
-scp -P "$SSH_PORT" "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
-ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf"
+$SCP_CMD "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
+$SSH_CMD -t -q "$USER@$SERVER" "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf"
 
 # Deploy generated domain configs
 echo "Deploying generated domain configurations..."
@@ -61,13 +66,13 @@ for config_file in "$TEMP_DIR"/*.conf; do
     if [ -f "$config_file" ]; then
         filename=$(basename "$config_file")
         echo "  Deploying $filename..."
-        scp -P "$SSH_PORT" "$config_file" "$USER@$SERVER:/tmp/$filename"
-        ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo mv /tmp/$filename /etc/nginx/conf.d/$filename"
+        $SCP_CMD "$config_file" "$USER@$SERVER:/tmp/$filename"
+        $SSH_CMD -t -q "$USER@$SERVER" "sudo mv /tmp/$filename /etc/nginx/conf.d/$filename"
     fi
 done
 
 # Reload nginx to apply changes
 echo "Reloading nginx..."
-ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo systemctl reload nginx"
+$SSH_CMD -t -q "$USER@$SERVER" "sudo systemctl reload nginx"
 
 echo "Deployment complete!"
