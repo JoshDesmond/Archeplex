@@ -1,5 +1,0 @@
-Hello! Please consider the following repository, Archeplex.
-
-Archeplex is designed as a collection of scripts intended for the management of a single virtual machine that hosts websites. The server, running Debian, uses Nginx to serve the different websites at different domains. So far, they are all static websites, so the configuration is fairly simple.
-
-I'd like to, as a quick side project, develop some form of uptime monitoring. 

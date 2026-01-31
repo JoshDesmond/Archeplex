@@ -1,5 +1,8 @@
 {
     "domain": "nexiometric.com",
     "name": "nexiometric",
-    "repo": "https://github.com/JoshDesmond/Nexiometric"
+    "repo": "https://github.com/JoshDesmond/Nexiometric",
+    "healthCheck": {
+        "expectedTexts": ["Nexiometric", "KPI"]
+    }
 }

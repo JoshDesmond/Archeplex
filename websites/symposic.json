@@ -1,5 +1,8 @@
 {
     "domain": "symposic.net",
     "name": "symposic",
-    "repo": "https://github.com/JoshDesmond/Symposic"
+    "repo": "https://github.com/JoshDesmond/Symposic",
+    "healthCheck": {
+        "expectedTexts": ["Symposic"]
+    }
 }
