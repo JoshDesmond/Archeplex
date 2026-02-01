@@ -15,7 +15,7 @@ fi
 # Configuration variables
 readonly NEW_USER="desmond"
 readonly SSH_PORT="2020"
-readonly SCRIPT_VERSION="1.2.0"
+readonly SCRIPT_VERSION="1.3.0"
 
 # ============================================
 # SYSTEM UPDATES AND ESSENTIAL PACKAGES
@@ -28,7 +28,7 @@ apt install -y ufw fail2ban lynis
 # System maintenance and updates
 apt install -y unattended-upgrades needrestart
 # Core utilities
-apt install -y sudo curl wget
+apt install -y sudo curl wget jq
 # Web server
 apt install -y nginx
 # System hardening
@@ -196,6 +196,35 @@ echo "Web directory configured: /var/www owned by ${NEW_USER}:www-data with 775 
 # TODO Question, should I do the same thing for /etc/nginx/?
 
 # ============================================
+# UPTIME MONITORING CRON JOB
+# ============================================
+echo "Setting up uptime monitoring cron job..."
+
+# Create log directory for uptime checks
+mkdir -p /var/log/archeplex
+chown ${NEW_USER}:${NEW_USER} /var/log/archeplex
+
+# Set up cron job to run every 4 hours (matching healthchecks.io schedule)
+# Runs as the configured user, not root
+UPTIME_SCRIPT="${REPO_ROOT}/scripts/check-uptime.sh"
+UPTIME_LOG="/var/log/archeplex/uptime-check.log"
+CRON_ENTRY="0 */4 * * * ${UPTIME_SCRIPT} >> ${UPTIME_LOG} 2>&1"
+
+if [ -f "$UPTIME_SCRIPT" ]; then
+    # Check if cron job already exists for this user
+    if ! crontab -u ${NEW_USER} -l 2>/dev/null | grep -q "check-uptime.sh"; then
+        # Add cron job for the user
+        (crontab -u ${NEW_USER} -l 2>/dev/null || true; echo "$CRON_ENTRY") | crontab -u ${NEW_USER} -
+        echo "Uptime monitoring cron job installed for user ${NEW_USER}"
+    else
+        echo "Uptime monitoring cron job already exists, skipping"
+    fi
+else
+    echo "Warning: check-uptime.sh not found at ${UPTIME_SCRIPT}"
+    echo "Uptime monitoring cron job not installed"
+fi
+
+# ============================================
 # FINAL CONFIGURATION
 # ============================================
 echo "Finalizing system configuration..."
@@ -213,6 +242,7 @@ fi
 
 echo "User Setup complete. You can now SSH as: ssh ${NEW_USER}@<server-ip> -p ${SSH_PORT}"
 echo "IMPORTANT: Set password for user '${NEW_USER}' by running: passwd ${NEW_USER}"
+echo "Ensure .env file exists (used currently for Healthchecks.io uptime monitoring)"
 echo "To check for additional security issues, run:"
 echo "  sudo lynis audit system"
 echo "Note: A system reboot is recommended after this setup to ensure all changes take effect."

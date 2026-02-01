@@ -1,0 +1,8 @@
+{
+    "domain": "infinitechlorella.com",
+    "name": "infinite-chlorella",
+    "repo": "https://github.com/JoshDesmond/InfiniteChlorella",
+    "healthCheck": {
+        "expectedTexts": ["Infinite Algae"]
+    }
+}

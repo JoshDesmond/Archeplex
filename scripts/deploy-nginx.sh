@@ -50,24 +50,33 @@ for website_file in "$PROJECT_ROOT"/websites/*.json; do
     fi
 done
 
-# Deploy main nginx.conf
-echo "Deploying main nginx.conf..."
-scp -P "$SSH_PORT" "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
-ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf"
+# Create a deployment script on the fly
+cat > "$TEMP_DIR/deploy.sh" << 'EOF'
+#!/bin/bash
+set -e
 
-# Deploy generated domain configs
-echo "Deploying generated domain configurations..."
-for config_file in "$TEMP_DIR"/*.conf; do
-    if [ -f "$config_file" ]; then
-        filename=$(basename "$config_file")
-        echo "  Deploying $filename..."
-        scp -P "$SSH_PORT" "$config_file" "$USER@$SERVER:/tmp/$filename"
-        ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo mv /tmp/$filename /etc/nginx/conf.d/$filename"
+# Move nginx.conf
+sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf
+
+# Move all domain configs
+for config in /tmp/*.conf; do
+    if [ -f "$config" ]; then
+        sudo mv "$config" /etc/nginx/conf.d/
     fi
 done
 
-# Reload nginx to apply changes
-echo "Reloading nginx..."
-ssh -p "$SSH_PORT" -t -q "$USER@$SERVER" "sudo systemctl reload nginx"
+# Reload nginx
+sudo systemctl reload nginx
+EOF
+
+# Copy all files at once
+echo "Copying files to server..."
+scp -P "$SSH_PORT" "$PROJECT_ROOT/nginx/nginx.conf" "$USER@$SERVER:/tmp/nginx.conf"
+scp -P "$SSH_PORT" "$TEMP_DIR"/*.conf "$USER@$SERVER:/tmp/"
+
+# Execute deployment script (single sudo prompt)
+echo "Deploying configurations..."
+scp -P "$SSH_PORT" "$TEMP_DIR/deploy.sh" "$USER@$SERVER:/tmp/deploy.sh"
+ssh -p "$SSH_PORT" -t "$USER@$SERVER" "bash /tmp/deploy.sh && rm /tmp/deploy.sh"
 
 echo "Deployment complete!"
