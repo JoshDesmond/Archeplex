@@ -54,6 +54,7 @@ echo "Deploying $PACKAGE_NAME to $DOMAIN"
 
 # Build the website
 echo "Building website..."
+"$SCRIPT_DIR/util/verify-dotenv.sh" "$WEBSITE_PATH"
 cd "$WEBSITE_PATH"
 
 if [ ! -d "node_modules" ]; then
