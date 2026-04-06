@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    cat <<EOF
+Usage: $(basename "$0") [-h | --help]
+
+Run once on a fresh Debian/Ubuntu VM as root. Installs packages, hardens SSH,
+configures firewall, fail2ban, nginx prep, and a cron job for check-website-health.sh --all.
+
+Requires repo at a fixed path, configs/, and .env (see .env.example).
+EOF
+    exit 0
+fi
+
 # Script assumes it's being run from the repository root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -207,30 +219,28 @@ echo "Web directory configured: /var/www owned by ${NEW_USER}:www-data with 775 
 # ============================================
 # UPTIME MONITORING CRON JOB
 # ============================================
-echo "Setting up uptime monitoring cron job..."
+echo "Setting up website health monitoring cron job..."
 
-# Create log directory for uptime checks
+# Create log directory for health checks
 mkdir -p /var/log/archeplex
 chown ${NEW_USER}:${NEW_USER} /var/log/archeplex
 
-# Set up cron job to run every 4 hours (matching healthchecks.io schedule)
+# Cron: full-site health checks every 4 hours (pings healthchecks.io when using --all)
 # Runs as the configured user, not root
-UPTIME_SCRIPT="${REPO_ROOT}/scripts/check-uptime.sh"
-UPTIME_LOG="/var/log/archeplex/uptime-check.log"
-CRON_ENTRY="0 */4 * * * ${UPTIME_SCRIPT} >> ${UPTIME_LOG} 2>&1"
+HEALTH_SCRIPT="${REPO_ROOT}/scripts/check-website-health.sh"
+HEALTH_LOG="/var/log/archeplex/website-health.log"
+CRON_ENTRY="0 */4 * * * ${HEALTH_SCRIPT} --all >> ${HEALTH_LOG} 2>&1"
 
-if [ -f "$UPTIME_SCRIPT" ]; then
-    # Check if cron job already exists for this user
-    if ! crontab -u ${NEW_USER} -l 2>/dev/null | grep -q "check-uptime.sh"; then
-        # Add cron job for the user
+if [ -f "$HEALTH_SCRIPT" ]; then
+    if ! crontab -u ${NEW_USER} -l 2>/dev/null | grep -q "check-website-health.sh"; then
         (crontab -u ${NEW_USER} -l 2>/dev/null || true; echo "$CRON_ENTRY") | crontab -u ${NEW_USER} -
-        echo "Uptime monitoring cron job installed for user ${NEW_USER}"
+        echo "Website health cron job installed for user ${NEW_USER}"
     else
-        echo "Uptime monitoring cron job already exists, skipping"
+        echo "Website health cron job already exists, skipping"
     fi
 else
-    echo "Warning: check-uptime.sh not found at ${UPTIME_SCRIPT}"
-    echo "Uptime monitoring cron job not installed"
+    echo "Warning: check-website-health.sh not found at ${HEALTH_SCRIPT}"
+    echo "Website health cron job not installed"
 fi
 
 # ============================================

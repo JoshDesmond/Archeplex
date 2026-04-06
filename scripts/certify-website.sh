@@ -2,22 +2,33 @@
 set -e
 
 # Script to generate SSL certificates for websites using Let's Encrypt/Certbot
-# Usage: ./certify-website.sh <domain>
-# Example: ./certify-website.sh automatisolutions.com
-
-# Configuration variables
 readonly SCRIPT_VERSION="1.0.0"
 
-# Check if running as root
+show_help() {
+    cat <<EOF
+Usage: $(basename "$0") [-h | --help] <domain>
+
+Obtain or renew Let's Encrypt TLS for an nginx server block (run on the VM as root).
+
+  <domain>     Public hostname (e.g. automatisolutions.com)
+  -h, --help   Show this help
+
+Example: sudo $0 automatisolutions.com
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    show_help
+    exit 0
+fi
+
 if [ "$EUID" -ne 0 ]; then
     echo "Error: This script must be run as root (use sudo)"
     exit 1
 fi
 
-# Check if domain argument is provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <domain>"
-    echo "Example: $0 automatisolutions.com"
+    show_help >&2
     exit 1
 fi
 

@@ -3,8 +3,14 @@
 # present and non-empty in .env (Vite inlines these at build time).
 set -euo pipefail
 
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    echo "Usage: $(basename "$0") [-h | --help] <project-directory>"
+    echo "Ensure VITE_* keys from .env.example exist and are non-empty in .env."
+    exit 0
+fi
+
 if [ $# -ne 1 ]; then
-    echo "Usage: $0 <project-directory>" >&2
+    echo "Usage: $(basename "$0") <project-directory>" >&2
     exit 1
 fi
 

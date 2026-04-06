@@ -3,6 +3,12 @@
 # Layout: websites/<site-id>/<site-id>.json
 set -euo pipefail
 
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    echo "Usage: $(basename "$0") [-h | --help]"
+    echo "Print one absolute path per line to each websites/<id>/<id>.json file."
+    exit 0
+fi
+
 # Resolves websites/ from this script's location (scripts/util -> repo root -> websites).
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBSITES_DIR="$(cd "$SELF_DIR/../../websites" && pwd)"
