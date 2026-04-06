@@ -91,11 +91,9 @@ check_website() {
 # Main loop through all website configurations
 log "Starting uptime checks..."
 
-for website_file in "$PROJECT_ROOT"/websites/*.json; do
-    if [ ! -f "$website_file" ]; then
-        continue
-    fi
-    
+while IFS= read -r website_file; do
+    [ -z "$website_file" ] && continue
+
     domain=$(parse_json_field "$website_file" "domain")
     name=$(parse_json_field "$website_file" "name")
     expected_texts=$(parse_expected_texts "$website_file")
@@ -111,7 +109,7 @@ for website_file in "$PROJECT_ROOT"/websites/*.json; do
         OVERALL_EXIT_CODE=1
         FAILED_SITES+=("$name")
     fi
-done
+done < <("$SCRIPT_DIR/util/list-website-json-files.sh")
 
 # Report results
 echo ""

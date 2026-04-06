@@ -2,10 +2,6 @@
     "domain": "automatisolutions.com",
     "name": "automati-solutions",
     "repo": "https://github.com/JoshDesmond/automatisolutions",
-    "customStaticRoutes": [
-        "/products/phreepet=>/phreepet.html",
-        "/services/digital-presence=>/digital-presence.html"
-    ],
     "healthCheck": {
         "expectedTexts": ["Automati Solutions"]
     }

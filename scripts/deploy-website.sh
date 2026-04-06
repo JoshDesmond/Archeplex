@@ -35,15 +35,14 @@ fi
 
 # Look up domain from websites configuration
 DOMAIN=""
-for website_file in "$PROJECT_ROOT"/websites/*.json; do
-    if [ -f "$website_file" ]; then
-        file_name=$(grep '"name"' "$website_file" | head -1 | sed 's/.*"name": *"\([^"]*\)".*/\1/')
-        if [ "$file_name" = "$PACKAGE_NAME" ]; then
-            DOMAIN=$(grep '"domain"' "$website_file" | head -1 | sed 's/.*"domain": *"\([^"]*\)".*/\1/')
-            break
-        fi
+while IFS= read -r website_file; do
+    [ -z "$website_file" ] && continue
+    file_name=$(grep '"name"' "$website_file" | head -1 | sed 's/.*"name": *"\([^"]*\)".*/\1/')
+    if [ "$file_name" = "$PACKAGE_NAME" ]; then
+        DOMAIN=$(grep '"domain"' "$website_file" | head -1 | sed 's/.*"domain": *"\([^"]*\)".*/\1/')
+        break
     fi
-done
+done < <("$SCRIPT_DIR/util/list-website-json-files.sh")
 
 if [ -z "$DOMAIN" ]; then
     echo "Error: No domain configuration found for package: $PACKAGE_NAME"
