@@ -6,11 +6,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Load environment variables if .env exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    # shellcheck disable=SC1091
-    source "$PROJECT_ROOT/.env"
+# Load environment variables from .env
+if [ ! -f "$PROJECT_ROOT/.env" ]; then
+    echo "Error: .env not found at $PROJECT_ROOT/.env (copy from .env.example)." >&2
+    exit 1
 fi
+set -a
+# shellcheck disable=SC1091
+. "$PROJECT_ROOT/.env"
+set +a
+: "${HEALTHCHECKS_PING_URL:?}"
 
 # Configuration
 CURL_TIMEOUT=15
@@ -120,15 +125,11 @@ else
 fi
 
 # Ping healthchecks.io with the result
-if [ -n "${HEALTHCHECKS_PING_URL:-}" ]; then
-    log "Pinging healthchecks.io..."
-    if curl -s --retry 3 --max-time 10 "${HEALTHCHECKS_PING_URL}/${OVERALL_EXIT_CODE}" > /dev/null; then
-        log "Healthchecks.io ping sent (exit code: $OVERALL_EXIT_CODE)"
-    else
-        log_error "Failed to ping healthchecks.io"
-    fi
+log "Pinging healthchecks.io..."
+if curl -s --retry 3 --max-time 10 "${HEALTHCHECKS_PING_URL}/${OVERALL_EXIT_CODE}" > /dev/null; then
+    log "Healthchecks.io ping sent (exit code: $OVERALL_EXIT_CODE)"
 else
-    log "Warning: HEALTHCHECKS_PING_URL not set, skipping ping"
+    log_error "Failed to ping healthchecks.io"
 fi
 
 exit $OVERALL_EXIT_CODE

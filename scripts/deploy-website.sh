@@ -2,13 +2,23 @@
 # Deploy website to Archeplex server
 set -euo pipefail
 
-SERVER="149.28.63.63"
-USER="desmond"
-SSH_PORT="2020"
-
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Load environment variables from .env
+if [ ! -f "$PROJECT_ROOT/.env" ]; then
+    echo "Error: .env not found at $PROJECT_ROOT/.env (copy from .env.example)." >&2
+    exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+. "$PROJECT_ROOT/.env"
+set +a
+: "${ARCHEPLEX_SERVER:?}" "${ARCHEPLEX_SSH_USER:?}" "${ARCHEPLEX_SSH_PORT:?}"
+SERVER="$ARCHEPLEX_SERVER"
+USER="$ARCHEPLEX_SSH_USER"
+SSH_PORT="$ARCHEPLEX_SSH_PORT"
 
 # Check if website path argument is provided
 if [ $# -ne 1 ]; then

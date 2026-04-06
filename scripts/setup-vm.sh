@@ -12,9 +12,18 @@ if [ ! -d "$CONFIG_DIR" ]; then
     exit 1
 fi
 
-# Configuration variables
-readonly NEW_USER="desmond"
-readonly SSH_PORT="2020"
+# Load environment variables from .env
+if [ ! -f "$REPO_ROOT/.env" ]; then
+    echo "Error: .env not found at $REPO_ROOT/.env (copy from .env.example)." >&2
+    exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+. "$REPO_ROOT/.env"
+set +a
+: "${ARCHEPLEX_SERVER:?}" "${ARCHEPLEX_SSH_USER:?}" "${ARCHEPLEX_SSH_PORT:?}"
+readonly NEW_USER="$ARCHEPLEX_SSH_USER"
+readonly SSH_PORT="$ARCHEPLEX_SSH_PORT"
 readonly SCRIPT_VERSION="1.3.0"
 
 # ============================================
@@ -122,7 +131,7 @@ systemctl restart sshd
 # ============================================
 echo "Configuring fail2ban..."
 
-# Sanity check: Validate that jail.local has the correct SSH port
+# Sanity check: jail.local should list the same SSH port as sshd
 if ! grep -q "port = ${SSH_PORT}" "${CONFIG_DIR}/fail2ban/jail.local"; then
     echo "Warning: fail2ban jail.local config doesn't contain port ${SSH_PORT}"
     echo "Please ensure jail.local is configured for the correct SSH port"
@@ -240,7 +249,7 @@ if [ -f "${CONFIG_DIR}/sysctl/99-security.conf" ]; then
     echo "Additional kernel security settings applied"
 fi
 
-echo "User Setup complete. You can now SSH as: ssh ${NEW_USER}@<server-ip> -p ${SSH_PORT}"
+echo "User Setup complete. You can now SSH as: ssh ${NEW_USER}@${ARCHEPLEX_SERVER} -p ${SSH_PORT}"
 echo "IMPORTANT: Set password for user '${NEW_USER}' by running: passwd ${NEW_USER}"
 echo "Ensure .env file exists (used currently for Healthchecks.io uptime monitoring)"
 echo "To check for additional security issues, run:"

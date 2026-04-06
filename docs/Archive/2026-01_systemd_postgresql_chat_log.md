@@ -370,7 +370,7 @@ This is a Docker/containerization pattern, not a Linux requirement. On a single 
 
 ```
 Server: your-vps
-├── User: desmond (admin)
+├── User: `${username}` (admin)
 ├── User: nexiometric (service user)
 │   ├── Service: nexiometric-backend.service (systemd)
 │   ├── Directory: /var/www/nexiometric/
